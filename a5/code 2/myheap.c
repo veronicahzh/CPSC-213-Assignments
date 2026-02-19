@@ -123,15 +123,15 @@ static int is_within_heap_range(struct myheap *h, void *addr) {
  * it returning a pointer to some block, then you are free to have it do so.
  */
 static void *coalesce(struct myheap *h, void *first_block_start) {
-  
   if (is_last_block(h, first_block_start)) return NULL;
 
   void *second_block_start = get_next_block(first_block_start);
 
-  if (block_is_in_use(first_block_start) || block_is_in_use(second_block_start)) return NULL;
-
-  int new_size = get_block_size(first_block_start) + get_block_size(second_block_start);
-  set_block_header(first_block_start, new_size, 0);
+  if (!is_within_heap_range(h, second_block_start) || block_is_in_use(first_block_start) || block_is_in_use(second_block_start)) {
+    return first_block_start;
+  }
+  
+  set_block_header(first_block_start, get_block_size(first_block_start) + get_block_size(second_block_start), 0);
 
   return first_block_start;
 }
@@ -145,9 +145,10 @@ static void *coalesce(struct myheap *h, void *first_block_start) {
 static int get_size_to_allocate(int user_size) {
   
     int headfoot = 2 * HEADER_SIZE;
-    int payload_size = (user_size + (HEADER_SIZE - 1)) / 8; // allocate next block
-    payload_size *= 8;
-    return payload_size + headfoot;
+    int payload = user_size;
+    int r = payload % HEADER_SIZE;
+    if (r != 0) payload += (HEADER_SIZE - r % HEADER_SIZE);
+    return payload + headfoot;
 }
 
 /*
@@ -165,14 +166,16 @@ static void *split_and_mark_used(struct myheap *h, void *block_start, int needed
     // split block: first block (size = needed_size, marked in use)
     // second block (size = leftover, marked free)
     // otherwise, mark block as used
-    int currBlockSize = get_block_size(block_start);
-    int leftover = currBlockSize - needed_size;
-    if (leftover >= 3 * HEADER_SIZE) {
+    int curr_block_size = get_block_size(block_start);
+    int leftover = curr_block_size - needed_size;
+    int min_block = 3 * HEADER_SIZE;
+
+    if (leftover >= min_block) {
         void *second_block = block_start + needed_size;
         set_block_header(block_start, needed_size, 1);
         set_block_header(second_block, leftover, 0);
     } else {
-        set_block_header(block_start, currBlockSize, 1);
+        set_block_header(block_start, curr_block_size, 1);
     }
     return get_payload(block_start);
 }
@@ -202,34 +205,15 @@ struct myheap *heap_create(unsigned int size)
  * block with the previous and the next block, if they are also free.
  */
 void myheap_free(struct myheap *h, void *payload) {
-    // get blcok start, mark it free
-    // if !lastblock, try to join next block
-    // new size = block size of first and next
-    // if !firstblock, try to join with prev block
-    // new size = block size of first and prev
-
-    if (!payload) return;
 
     void *block_start = get_block_start(payload);
-    int size = get_block_size(block_start);
-    set_block_header(block_start, size, 0);
-
-    if (!is_last_block(h, block_start)) {
-        void *next = get_next_block(block_start);
-
-        if (!block_is_in_use(next)) {
-            void *merged = coalesce(h, block_start);
-            if (merged) block_start = merged;
-        }
-        
-    }
+    set_block_header(block_start, get_block_size(block_start), 0);
+    
+    coalesce(h, block_start);
 
     if (!is_first_block(h, block_start)) {
         void *prev = get_previous_block(block_start);
-        if (!block_is_in_use(prev)) {
-            void *merged = coalesce(h, prev);
-            if (merged) block_start = merged;
-        }
+        coalesce(h, prev);
     }
 }
 
@@ -239,16 +223,14 @@ void myheap_free(struct myheap *h, void *payload) {
  * or NULL if no block large enough to satisfy the request exists.
  */
 void *myheap_malloc(struct myheap *h, unsigned int user_size) {
-  
-  if (user_size == 0) return NULL;
 
   int needed_size = get_size_to_allocate(user_size);
 
   for (void *blk = h->start; is_within_heap_range(h, blk); blk = get_next_block(blk)) {
+
     if (!block_is_in_use(blk) && get_block_size(blk) >= needed_size) {
         return split_and_mark_used(h, blk, needed_size);
     }
   }
-
   return NULL;
 }

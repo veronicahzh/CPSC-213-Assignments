@@ -194,8 +194,34 @@ struct myheap *heap_create(unsigned int size)
  * block with the previous and the next block, if they are also free.
  */
 void myheap_free(struct myheap *h, void *payload) {
-  
-    
+    // get blcok start, mark it free
+    // if !lastblock, try to join next block
+    // new size = block size of first and next
+    // if !firstblock, try to join with prev block
+    // new size = block size of first and prev
+
+    if (!payload) return;
+
+    void *block_start = get_block_start(payload);
+    int size = get_block_size(block_start);
+    set_block_header(block_start, size, 0);
+
+    if (!is_last_block(h, block_start)) {
+        void *next = get_next_block(block_start);
+
+        if (!block_is_in_use(next)) {
+            void *merged = coalesce(h, block_start);
+            if (merged) block_start = merged;
+        }
+        
+        if (!is_first_block(h, block_start)) {
+            void *prev = get_previous_block(block_start);
+            if (!block_is_in_use(prev)) {
+                void *merged = coalesce(h, prev);
+                if (merged) block_start = merged;
+            }
+        }
+    }
 }
 
 /*

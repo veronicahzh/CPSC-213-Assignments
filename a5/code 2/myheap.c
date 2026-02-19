@@ -124,8 +124,16 @@ static int is_within_heap_range(struct myheap *h, void *addr) {
  */
 static void *coalesce(struct myheap *h, void *first_block_start) {
   
-  /* TO BE COMPLETED BY THE STUDENT. */
-  return NULL;
+  if (is_last_block(h, first_block_start)) return NULL;
+
+  void *second_block_start = get_next_block(first_block_start);
+
+  if (block_is_in_use(first_block_start) || block_is_in_use(second_block_start)) return NULL;
+
+  int new_size = get_block_size(first_block_start) + get_block_size(second_block_start);
+  set_block_header(first_block_start, new_size, 0);
+
+  return first_block_start;
 }
 
 /*
@@ -232,6 +240,15 @@ void myheap_free(struct myheap *h, void *payload) {
  */
 void *myheap_malloc(struct myheap *h, unsigned int user_size) {
   
-  /* TO BE COMPLETED BY THE STUDENT. */
+  if (user_size == 0) return NULL;
+
+  int needed_size = get_size_to_allocate(user_size);
+
+  for (void *blk = h->start; is_within_heap_range(h, blk); blk = get_next_block(blk)) {
+    if (!block_is_in_use(blk) && get_block_size(blk) >= needed_size) {
+        return split_and_mark_used(h, blk, needed_size);
+    }
+  }
+
   return NULL;
 }

@@ -214,12 +214,13 @@ void myheap_free(struct myheap *h, void *payload) {
             if (merged) block_start = merged;
         }
         
-        if (!is_first_block(h, block_start)) {
-            void *prev = get_previous_block(block_start);
-            if (!block_is_in_use(prev)) {
-                void *merged = coalesce(h, prev);
-                if (merged) block_start = merged;
-            }
+    }
+
+    if (!is_first_block(h, block_start)) {
+        void *prev = get_previous_block(block_start);
+        if (!block_is_in_use(prev)) {
+            void *merged = coalesce(h, prev);
+            if (merged) block_start = merged;
         }
     }
 }

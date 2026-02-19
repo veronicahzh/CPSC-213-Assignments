@@ -153,8 +153,20 @@ static int get_size_to_allocate(int user_size) {
  */
 static void *split_and_mark_used(struct myheap *h, void *block_start, int needed_size) {
 
-  /* TO BE COMPLETED BY THE STUDENT. */
-  return NULL;
+    // if leftover = block size - needed size, it can split and leftover >= 3x header_size
+    // split block: first block (size = needed_size, marked in use)
+    // second block (size = leftover, marked free)
+    // otherwise, mark block as used
+    int currBlockSize = get_block_size(block_start);
+    int leftover = currBlockSize - needed_size;
+    if (leftover >= 3 * HEADER_SIZE) {
+        void *second_block = block_start + needed_size;
+        set_block_header(block_start, needed_size, 1);
+        set_block_header(second_block, leftover, 0);
+    } else {
+        set_block_header(block_start, currBlockSize, 1);
+    }
+    return get_payload(block_start);
 }
 
 /*
@@ -183,7 +195,7 @@ struct myheap *heap_create(unsigned int size)
  */
 void myheap_free(struct myheap *h, void *payload) {
   
-  /* TO BE COMPLETED BY THE STUDENT. */
+    
 }
 
 /*

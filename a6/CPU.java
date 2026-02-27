@@ -158,20 +158,21 @@ public class CPU extends AbstractSM213CPU {
       case 0x8: // br a .................. 8-pp  (a = pc + pp * 2)
         // TODO
         int offset = (byte) insOpImm.get();
-        offset *= 2;
-        pc.set(pc.get() + offset);
+        pc.set(pc.get() + offset * 2);
         break;
 
       case 0x9: // beq rs, a ............. 9rpp  (a = pc + pp * 2)
         if (reg.get(insOp0.get()) == 0) {
             int offset = (byte) insOpImm.get();
-            offset *= 2;
-            pc.set(pc.get() + offset);
+            pc.set(pc.get() + offset * 2);
         }
         break;
 
       case 0xa: // bg rs, a .............. arpp  (a = pc + pp * 2)
-        // TODO
+        if (reg.get(insOp0.get()) > 0) {
+            int offset = (byte) insOpImm.get();
+            pc.set(pc.get() + offset * 2);
+        }
         break;
 
       case 0xb: // j i ................... b--- iiii iiii
